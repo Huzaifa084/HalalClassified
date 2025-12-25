@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -51,6 +52,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
 import coil.compose.AsyncImage
 import com.halalclassified.app.data.ads.AdDetail
 import com.halalclassified.app.data.ads.AdsRepository
@@ -157,6 +159,8 @@ fun AdDetailScreen(
 
             val detail = detailState ?: return@Surface
             val ad = detail.ad
+            val isOwner = !userId.isNullOrBlank() && ad.userId == userId
+            val canChat = !userId.isNullOrBlank() && !isOwner && !ad.userId.isNullOrBlank()
 
             if (detail.imageUrls.isNotEmpty()) {
                 LazyRow(
@@ -237,7 +241,22 @@ fun AdDetailScreen(
                 Surface(
                     shape = MaterialTheme.shapes.large,
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            enabled = canChat,
+                            role = Role.Button
+                        ) {
+                            val sellerId = ad.userId ?: return@clickable
+                            scope.launch {
+                                val chat = chatRepository.getOrCreateChat(
+                                    adId = ad.id,
+                                    buyerId = userId ?: return@launch,
+                                    sellerId = sellerId
+                                )
+                                onOpenChat(chat.id)
+                            }
+                        }
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -259,26 +278,37 @@ fun AdDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        if (isOwner) {
+                            Text(
+                                text = "This is your listing. You can manage it from My Ads.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else if (canChat) {
+                            Text(
+                                text = "Tap to chat with the seller.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = {
-                            if (userId.isNullOrBlank()) return@Button
                             val sellerId = ad.userId ?: return@Button
-                            if (sellerId == userId) return@Button
                             scope.launch {
                                 val chat = chatRepository.getOrCreateChat(
                                     adId = ad.id,
-                                    buyerId = userId,
+                                    buyerId = userId ?: return@launch,
                                     sellerId = sellerId
                                 )
                                 onOpenChat(chat.id)
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !userId.isNullOrBlank() && ad.userId != userId,
+                        enabled = canChat,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -288,7 +318,7 @@ fun AdDetailScreen(
                             contentDescription = "Chat"
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Chat")
+                        Text(if (isOwner) "Your listing" else "Chat")
                     }
                     Button(
                         onClick = {
@@ -298,7 +328,7 @@ fun AdDetailScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !ad.phone.isNullOrBlank() || !sellerProfile?.phone.isNullOrBlank(),
+                        enabled = !isOwner && (!ad.phone.isNullOrBlank() || !sellerProfile?.phone.isNullOrBlank()),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary
                         )
