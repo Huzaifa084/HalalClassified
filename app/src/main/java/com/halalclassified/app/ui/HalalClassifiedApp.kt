@@ -19,6 +19,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +47,12 @@ fun HalalClassifiedApp() {
         pendingChatId = null
         pendingManageAdId = adId
         selectedTab = AppTab.MyAds
+    }
+
+    BackHandler(enabled = selectedTab != AppTab.Home) {
+        pendingChatId = null
+        pendingManageAdId = null
+        selectedTab = AppTab.Home
     }
 
     Scaffold(

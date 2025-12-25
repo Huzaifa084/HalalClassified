@@ -31,9 +31,11 @@ import com.halalclassified.app.data.auth.AuthController
 import com.halalclassified.app.data.profile.Profile
 import com.halalclassified.app.data.profile.ProfileRepository
 import com.halalclassified.app.data.profile.ProfileUpsert
+import com.halalclassified.app.data.session.OnboardingStore
 import com.halalclassified.app.data.session.SessionStore
 import com.halalclassified.app.data.supabase.SupabaseClientProvider
 import com.halalclassified.app.ui.auth.AuthFlowScreen
+import com.halalclassified.app.ui.onboarding.TocPermissionsScreen
 import com.halalclassified.app.ui.profile.ProfileCompletionScreen
 import io.github.jan.supabase.gotrue.SessionStatus
 import io.github.jan.supabase.gotrue.auth
@@ -52,8 +54,10 @@ fun AppEntry() {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val sessionStore = remember(context) { SessionStore(context) }
+    val onboardingStore = remember(context) { OnboardingStore(context) }
     val profileRepository = remember { ProfileRepository(supabase) }
     var storedAccounts by remember { mutableStateOf(sessionStore.loadAccounts()) }
+    var onboardingComplete by remember { mutableStateOf(onboardingStore.isCompleted()) }
     var profileState by remember { mutableStateOf<Profile?>(null) }
     var profileFetchLoading by remember { mutableStateOf(false) }
     var profileUpdateLoading by remember { mutableStateOf(false) }
@@ -132,82 +136,91 @@ fun AppEntry() {
         profileLoaded = true
     }
 
-    when (sessionStatus) {
-        is SessionStatus.Authenticated -> {
-            val user = (sessionStatus as SessionStatus.Authenticated).session.user
-            when {
-                !profileLoaded && profileFetchLoading -> AuthLoadingScreen()
-                needsProfileCompletion(profileState) -> ProfileCompletionScreen(
-                    name = user.displayName(),
-                    email = user?.email ?: "",
-                    isLoading = profileUpdateLoading,
-                    errorMessage = profileError,
-                    onSubmitDob = { dob ->
-                        if (dob.isBlank()) {
-                            profileError = "Please enter your date of birth."
-                        } else {
-                            scope.launch {
-                                profileUpdateLoading = true
-                                profileError = null
-                                val userId = user?.id ?: return@launch
-                                val upsert = ProfileUpsert(
-                                    id = userId,
-                                    firstName = user.firstName(),
-                                    lastName = user.lastName(),
-                                    email = user.email,
-                                    dob = dob
-                                )
-                                profileState = runCatching { profileRepository.upsertProfile(upsert) }
-                                    .onFailure { profileError = it.message ?: "Unable to update profile." }
-                                    .getOrNull()
-                                profileUpdateLoading = false
+    if (!onboardingComplete) {
+        TocPermissionsScreen(
+            onContinue = {
+                onboardingStore.setCompleted(true)
+                onboardingComplete = true
+            }
+        )
+    } else {
+        when (sessionStatus) {
+            is SessionStatus.Authenticated -> {
+                val user = (sessionStatus as SessionStatus.Authenticated).session.user
+                when {
+                    !profileLoaded && profileFetchLoading -> AuthLoadingScreen()
+                    needsProfileCompletion(profileState) -> ProfileCompletionScreen(
+                        name = user.displayName(),
+                        email = user?.email ?: "",
+                        isLoading = profileUpdateLoading,
+                        errorMessage = profileError,
+                        onSubmitDob = { dob ->
+                            if (dob.isBlank()) {
+                                profileError = "Please enter your date of birth."
+                            } else {
+                                scope.launch {
+                                    profileUpdateLoading = true
+                                    profileError = null
+                                    val userId = user?.id ?: return@launch
+                                    val upsert = ProfileUpsert(
+                                        id = userId,
+                                        firstName = user.firstName(),
+                                        lastName = user.lastName(),
+                                        email = user.email,
+                                        dob = dob
+                                    )
+                                    profileState = runCatching { profileRepository.upsertProfile(upsert) }
+                                        .onFailure { profileError = it.message ?: "Unable to update profile." }
+                                        .getOrNull()
+                                    profileUpdateLoading = false
+                                }
                             }
                         }
-                    }
-                )
-                else -> HalalClassifiedApp()
+                    )
+                    else -> HalalClassifiedApp()
+                }
             }
-        }
-        is SessionStatus.LoadingFromStorage -> AuthLoadingScreen()
-        is SessionStatus.NetworkError -> AuthStatusScreen(
-            title = "Offline",
-            subtitle = "Connect to the internet to continue."
-        )
-        is SessionStatus.NotAuthenticated -> AuthFlowScreen(
-            storedAccounts = storedAccounts,
-            authState = authState,
-            onSelectAccount = { account ->
-                scope.launch {
+            is SessionStatus.LoadingFromStorage -> AuthLoadingScreen()
+            is SessionStatus.NetworkError -> AuthStatusScreen(
+                title = "Offline",
+                subtitle = "Connect to the internet to continue."
+            )
+            is SessionStatus.NotAuthenticated -> AuthFlowScreen(
+                storedAccounts = storedAccounts,
+                authState = authState,
+                onSelectAccount = { account ->
+                    scope.launch {
+                        authController.clearStatus()
+                        sessionStore.getSession(account.id)?.let { stored ->
+                            supabase.auth.importSession(stored.session)
+                        }
+                    }
+                },
+                onGoogleSignIn = {
                     authController.clearStatus()
-                    sessionStore.getSession(account.id)?.let { stored ->
-                        supabase.auth.importSession(stored.session)
+                    if (webClientId.isBlank() || webClientId.startsWith("YOUR_")) {
+                        authController.endGoogleSignInWithError("Set google_web_client_id in strings.xml.")
+                    } else {
+                        authController.startGoogleSignIn()
+                        // Sign out locally to always show the account picker.
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                        }
                     }
-                }
-            },
-            onGoogleSignIn = {
-                authController.clearStatus()
-                if (webClientId.isBlank() || webClientId.startsWith("YOUR_")) {
-                    authController.endGoogleSignInWithError("Set google_web_client_id in strings.xml.")
-                } else {
-                    authController.startGoogleSignIn()
-                    // Sign out locally to always show the account picker.
-                    googleSignInClient.signOut().addOnCompleteListener {
-                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                },
+                onEmailSignUp = { firstName, lastName, email, password, dob ->
+                    scope.launch {
+                        authController.signUpEmail(firstName, lastName, email, password, dob)
                     }
-                }
-            },
-            onEmailSignUp = { firstName, lastName, email, password, dob ->
-                scope.launch {
-                    authController.signUpEmail(firstName, lastName, email, password, dob)
-                }
-            },
-            onLogin = { email, password ->
-                scope.launch {
-                    authController.signInEmail(email, password)
-                }
-            },
-            onClearStatus = { authController.clearStatus() }
-        )
+                },
+                onLogin = { email, password ->
+                    scope.launch {
+                        authController.signInEmail(email, password)
+                    }
+                },
+                onClearStatus = { authController.clearStatus() }
+            )
+        }
     }
 }
 
