@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -42,7 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,21 +51,17 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-
-data class StoredAccount(
-    val name: String,
-    val email: String
-)
+import com.halalclassified.app.data.auth.AuthUiState
+import com.halalclassified.app.data.session.StoredAccount
 
 private enum class AuthStep {
     AccountSwitcher,
     Launch,
-    GoogleDob,
     EmailSignUp,
     Login
 }
@@ -72,7 +69,12 @@ private enum class AuthStep {
 @Composable
 fun AuthFlowScreen(
     storedAccounts: List<StoredAccount>,
-    onAuthenticated: () -> Unit
+    authState: AuthUiState,
+    onSelectAccount: (StoredAccount) -> Unit,
+    onGoogleSignIn: () -> Unit,
+    onEmailSignUp: (String, String, String, String, String) -> Unit,
+    onLogin: (String, String) -> Unit,
+    onClearStatus: () -> Unit
 ) {
     val initialStep = if (storedAccounts.isNotEmpty()) {
         AuthStep.AccountSwitcher
@@ -84,83 +86,95 @@ fun AuthFlowScreen(
     when (step) {
         AuthStep.AccountSwitcher -> AccountSwitcherScreen(
             accounts = storedAccounts,
-            onSelect = { onAuthenticated() },
-            onAddNew = { step = AuthStep.Launch }
+            authState = authState,
+            onSelect = { onSelectAccount(it) },
+            onAddNew = {
+                onClearStatus()
+                step = AuthStep.Launch
+            }
         )
         AuthStep.Launch -> LaunchScreen(
-            onGoogle = { step = AuthStep.GoogleDob },
-            onEmailSignUp = { step = AuthStep.EmailSignUp },
-            onLogin = { step = AuthStep.Login }
-        )
-        AuthStep.GoogleDob -> GoogleDobScreen(
-            onBack = { step = AuthStep.Launch },
-            onContinue = { onAuthenticated() }
+            authState = authState,
+            onGoogle = {
+                onClearStatus()
+                onGoogleSignIn()
+            },
+            onEmailSignUp = {
+                onClearStatus()
+                step = AuthStep.EmailSignUp
+            },
+            onLogin = {
+                onClearStatus()
+                step = AuthStep.Login
+            }
         )
         AuthStep.EmailSignUp -> EmailSignUpScreen(
-            onBack = { step = AuthStep.Launch },
-            onLogin = { step = AuthStep.Login },
-            onSubmit = { onAuthenticated() }
+            authState = authState,
+            onBack = {
+                onClearStatus()
+                step = AuthStep.Launch
+            },
+            onLogin = {
+                onClearStatus()
+                step = AuthStep.Login
+            },
+            onSubmit = onEmailSignUp
         )
         AuthStep.Login -> LoginScreen(
-            onBack = { step = AuthStep.Launch },
-            onCreateAccount = { step = AuthStep.EmailSignUp },
-            onSubmit = { onAuthenticated() }
+            authState = authState,
+            onBack = {
+                onClearStatus()
+                step = AuthStep.Launch
+            },
+            onCreateAccount = {
+                onClearStatus()
+                step = AuthStep.EmailSignUp
+            },
+            onSubmit = onLogin
         )
     }
 }
 
 @Composable
 private fun LaunchScreen(
+    authState: AuthUiState,
     onGoogle: () -> Unit,
     onEmailSignUp: () -> Unit,
     onLogin: () -> Unit
 ) {
     AuthScreenFrame(
         title = "Welcome to Halal Classified",
-        subtitle = "Find trusted Qurbani animals with verified listings across Pakistan."
+        subtitle = "Find trusted Qurbani animals with verified listings across Pakistan.",
+        authState = authState
     ) {
-        GoogleButton(onClick = onGoogle)
+        GoogleButton(
+            onClick = onGoogle,
+            enabled = !authState.isLoading,
+            loading = authState.isLoading
+        )
         Spacer(modifier = Modifier.height(8.dp))
         PrimaryButton(
             text = "Sign up with Email",
-            onClick = onEmailSignUp
+            onClick = onEmailSignUp,
+            enabled = !authState.isLoading
         )
         Spacer(modifier = Modifier.height(4.dp))
-        TextButton(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+        TextButton(
+            onClick = onLogin,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !authState.isLoading
+        ) {
             Text(text = "Login")
         }
     }
 }
 
 @Composable
-private fun GoogleDobScreen(
-    onBack: () -> Unit,
-    onContinue: () -> Unit
-) {
-    AuthScreenFrame(
-        title = "Complete your profile",
-        subtitle = "We fetched your Google details. Add your date of birth to finish.",
-        onBack = onBack
-    ) {
-        ReadOnlyField(label = "First name", value = "Ayesha")
-        ReadOnlyField(label = "Last name", value = "Khan")
-        ReadOnlyField(label = "Email", value = "ayesha@email.com")
-        AuthField(
-            label = "Date of birth",
-            value = "",
-            onValueChange = {},
-            placeholder = "DD/MM/YYYY",
-            leadingIcon = Icons.Outlined.Today
-        )
-        PrimaryButton(text = "Continue", onClick = onContinue)
-    }
-}
-
-@Composable
 private fun EmailSignUpScreen(
+    authState: AuthUiState,
     onBack: () -> Unit,
     onLogin: () -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: (String, String, String, String, String) -> Unit
 ) {
     var firstName by rememberSaveable { mutableStateOf("") }
     var lastName by rememberSaveable { mutableStateOf("") }
@@ -171,21 +185,24 @@ private fun EmailSignUpScreen(
     AuthScreenFrame(
         title = "Create your account",
         subtitle = "Post listings, chat with sellers, and save favorites.",
-        onBack = onBack
+        onBack = onBack,
+        authState = authState
     ) {
         AuthField(
             label = "First name",
             value = firstName,
             onValueChange = { firstName = it },
             placeholder = "Enter your first name",
-            leadingIcon = Icons.Outlined.Person
+            leadingIcon = Icons.Outlined.Person,
+            enabled = !authState.isLoading
         )
         AuthField(
             label = "Last name",
             value = lastName,
             onValueChange = { lastName = it },
             placeholder = "Enter your last name",
-            leadingIcon = Icons.Outlined.Person
+            leadingIcon = Icons.Outlined.Person,
+            enabled = !authState.isLoading
         )
         AuthField(
             label = "Email",
@@ -193,7 +210,8 @@ private fun EmailSignUpScreen(
             onValueChange = { email = it },
             placeholder = "you@email.com",
             leadingIcon = Icons.Outlined.Email,
-            keyboardType = KeyboardType.Email
+            keyboardType = KeyboardType.Email,
+            enabled = !authState.isLoading
         )
         AuthField(
             label = "Password",
@@ -202,17 +220,28 @@ private fun EmailSignUpScreen(
             placeholder = "Create a password",
             leadingIcon = Icons.Outlined.Lock,
             keyboardType = KeyboardType.Password,
-            isPassword = true
+            isPassword = true,
+            enabled = !authState.isLoading
         )
         AuthField(
             label = "Date of birth",
             value = dob,
             onValueChange = { dob = it },
             placeholder = "DD/MM/YYYY",
-            leadingIcon = Icons.Outlined.Today
+            leadingIcon = Icons.Outlined.Today,
+            enabled = !authState.isLoading
         )
-        PrimaryButton(text = "Create account", onClick = onSubmit)
-        TextButton(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+        PrimaryButton(
+            text = "Create account",
+            onClick = { onSubmit(firstName, lastName, email, password, dob) },
+            enabled = !authState.isLoading,
+            loading = authState.isLoading
+        )
+        TextButton(
+            onClick = onLogin,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !authState.isLoading
+        ) {
             Text(text = "Already have an account? Login")
         }
     }
@@ -220,9 +249,10 @@ private fun EmailSignUpScreen(
 
 @Composable
 private fun LoginScreen(
+    authState: AuthUiState,
     onBack: () -> Unit,
     onCreateAccount: () -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: (String, String) -> Unit
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -230,7 +260,8 @@ private fun LoginScreen(
     AuthScreenFrame(
         title = "Login",
         subtitle = "Welcome back. Continue where you left off.",
-        onBack = onBack
+        onBack = onBack,
+        authState = authState
     ) {
         AuthField(
             label = "Email",
@@ -238,7 +269,8 @@ private fun LoginScreen(
             onValueChange = { email = it },
             placeholder = "you@email.com",
             leadingIcon = Icons.Outlined.Email,
-            keyboardType = KeyboardType.Email
+            keyboardType = KeyboardType.Email,
+            enabled = !authState.isLoading
         )
         AuthField(
             label = "Password",
@@ -247,10 +279,20 @@ private fun LoginScreen(
             placeholder = "Enter your password",
             leadingIcon = Icons.Outlined.Lock,
             keyboardType = KeyboardType.Password,
-            isPassword = true
+            isPassword = true,
+            enabled = !authState.isLoading
         )
-        PrimaryButton(text = "Login", onClick = onSubmit)
-        TextButton(onClick = onCreateAccount, modifier = Modifier.fillMaxWidth()) {
+        PrimaryButton(
+            text = "Login",
+            onClick = { onSubmit(email, password) },
+            enabled = !authState.isLoading,
+            loading = authState.isLoading
+        )
+        TextButton(
+            onClick = onCreateAccount,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !authState.isLoading
+        ) {
             Text(text = "Create new account")
         }
     }
@@ -259,17 +301,23 @@ private fun LoginScreen(
 @Composable
 private fun AccountSwitcherScreen(
     accounts: List<StoredAccount>,
+    authState: AuthUiState,
     onSelect: (StoredAccount) -> Unit,
     onAddNew: () -> Unit
 ) {
     AuthScreenFrame(
         title = "Welcome back",
-        subtitle = "Choose a saved account to continue."
+        subtitle = "Choose a saved account to continue.",
+        authState = authState
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             accounts.forEach { account ->
                 ElevatedCard(
-                    onClick = { onSelect(account) },
+                    onClick = {
+                        if (!authState.isLoading) {
+                            onSelect(account)
+                        }
+                    },
                     shape = MaterialTheme.shapes.large,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -318,7 +366,11 @@ private fun AccountSwitcherScreen(
             color = MaterialTheme.colorScheme.outlineVariant,
             modifier = Modifier.padding(vertical = 4.dp)
         )
-        OutlinedButton(onClick = onAddNew, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = onAddNew,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !authState.isLoading
+        ) {
             Text(text = "Use another account")
         }
     }
@@ -329,6 +381,7 @@ private fun AuthScreenFrame(
     title: String,
     subtitle: String,
     onBack: (() -> Unit)? = null,
+    authState: AuthUiState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     AuthBackground {
@@ -358,6 +411,7 @@ private fun AuthScreenFrame(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    AuthStatusBanner(authState)
                     Spacer(modifier = Modifier.height(4.dp))
                     content()
                 }
@@ -370,6 +424,34 @@ private fun AuthScreenFrame(
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun AuthStatusBanner(state: AuthUiState?) {
+    val message = state?.error ?: state?.message ?: return
+    val isError = state?.error != null
+    val container = if (isError) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
+    val onContainer = if (isError) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    }
+
+    Surface(
+        color = container,
+        contentColor = onContainer,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
     }
 }
 
@@ -426,7 +508,8 @@ private fun AuthField(
     placeholder: String,
     leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    enabled: Boolean = true
 ) {
     OutlinedTextField(
         value = value,
@@ -443,6 +526,7 @@ private fun AuthField(
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = MaterialTheme.shapes.large,
+        enabled = enabled,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -476,25 +560,41 @@ private fun ReadOnlyField(
 @Composable
 private fun PrimaryButton(
     text: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    loading: Boolean = false
 ) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        enabled = enabled && !loading,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
         )
     ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                strokeWidth = 2.dp
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         Text(text = text)
     }
 }
 
 @Composable
-private fun GoogleButton(onClick: () -> Unit) {
+private fun GoogleButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    loading: Boolean = false
+) {
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        enabled = enabled && !loading,
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -510,7 +610,7 @@ private fun GoogleButton(onClick: () -> Unit) {
             }
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = "Continue with Google")
+        Text(text = if (loading) "Opening Google..." else "Continue with Google")
     }
 }
 
