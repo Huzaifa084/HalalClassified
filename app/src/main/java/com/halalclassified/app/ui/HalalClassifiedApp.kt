@@ -27,15 +27,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.halalclassified.app.ui.chats.ChatsScreen
 import com.halalclassified.app.ui.home.HomeScreen
-import com.halalclassified.app.ui.screens.ChatsScreen
-import com.halalclassified.app.ui.screens.MyAdsScreen
-import com.halalclassified.app.ui.screens.ProfileScreen
-import com.halalclassified.app.ui.screens.SellScreen
+import com.halalclassified.app.ui.myads.MyAdsScreen
+import com.halalclassified.app.ui.profile.ProfileScreen
+import com.halalclassified.app.ui.sell.SellScreen
 
 @Composable
 fun HalalClassifiedApp() {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.Home) }
+    var pendingChatId by rememberSaveable { mutableStateOf<String?>(null) }
+    val openChat: (String) -> Unit = { chatId ->
+        pendingChatId = chatId
+        selectedTab = AppTab.Chats
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -54,11 +59,14 @@ fun HalalClassifiedApp() {
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                AppTab.Home -> HomeScreen()
-                AppTab.Chats -> ChatsScreen()
+                AppTab.Home -> HomeScreen(onOpenChat = openChat)
+                AppTab.Chats -> ChatsScreen(
+                    startChatId = pendingChatId,
+                    onChatConsumed = { pendingChatId = null }
+                )
                 AppTab.Sell -> SellScreen()
                 AppTab.MyAds -> MyAdsScreen()
-                AppTab.Profile -> ProfileScreen()
+                AppTab.Profile -> ProfileScreen(onOpenChat = openChat)
             }
         }
     }
