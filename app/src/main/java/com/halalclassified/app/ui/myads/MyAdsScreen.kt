@@ -86,7 +86,10 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun MyAdsScreen() {
+fun MyAdsScreen(
+    startEditAdId: String? = null,
+    onEditConsumed: (() -> Unit)? = null
+) {
     val supabase = SupabaseClientProvider.client
     val adsRepository = remember { AdsRepository(supabase) }
     val sessionStatus by supabase.auth.sessionStatus.collectAsState()
@@ -122,6 +125,17 @@ fun MyAdsScreen() {
                     )
                 }
             )
+    }
+
+    LaunchedEffect(startEditAdId, feedState.ads, feedState.isLoading) {
+        if (startEditAdId.isNullOrBlank()) return@LaunchedEffect
+        if (feedState.isLoading) return@LaunchedEffect
+        if (selectedAdForEdit != null) return@LaunchedEffect
+        val match = feedState.ads.firstOrNull { it.ad.id == startEditAdId }?.ad
+        if (match != null) {
+            selectedAdForEdit = match
+        }
+        onEditConsumed?.invoke()
     }
 
     Surface(color = MaterialTheme.colorScheme.background) {

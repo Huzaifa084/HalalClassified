@@ -37,9 +37,15 @@ import com.halalclassified.app.ui.sell.SellScreen
 fun HalalClassifiedApp() {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.Home) }
     var pendingChatId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingManageAdId by rememberSaveable { mutableStateOf<String?>(null) }
     val openChat: (String) -> Unit = { chatId ->
         pendingChatId = chatId
         selectedTab = AppTab.Chats
+    }
+    val openManageListing: (String) -> Unit = { adId ->
+        pendingChatId = null
+        pendingManageAdId = adId
+        selectedTab = AppTab.MyAds
     }
 
     Scaffold(
@@ -59,14 +65,23 @@ fun HalalClassifiedApp() {
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                AppTab.Home -> HomeScreen(onOpenChat = openChat)
+                AppTab.Home -> HomeScreen(
+                    onOpenChat = openChat,
+                    onManageListing = openManageListing
+                )
                 AppTab.Chats -> ChatsScreen(
                     startChatId = pendingChatId,
                     onChatConsumed = { pendingChatId = null }
                 )
                 AppTab.Sell -> SellScreen()
-                AppTab.MyAds -> MyAdsScreen()
-                AppTab.Profile -> ProfileScreen(onOpenChat = openChat)
+                AppTab.MyAds -> MyAdsScreen(
+                    startEditAdId = pendingManageAdId,
+                    onEditConsumed = { pendingManageAdId = null }
+                )
+                AppTab.Profile -> ProfileScreen(
+                    onOpenChat = openChat,
+                    onManageListing = openManageListing
+                )
             }
         }
     }

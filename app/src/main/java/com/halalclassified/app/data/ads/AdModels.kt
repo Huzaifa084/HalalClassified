@@ -11,9 +11,11 @@ data class AdRecord(
     val userId: String? = null,
     val title: String? = null,
     @SerialName("price_pkr")
-    @JsonNames("price")
     @Serializable(with = FlexibleStringSerializer::class)
-    val price: String? = null,
+    val pricePkr: String? = null,
+    @SerialName("price")
+    @Serializable(with = FlexibleStringSerializer::class)
+    val priceRaw: String? = null,
     val category: String? = null,
     val city: String? = null,
     val description: String? = null,
@@ -37,7 +39,10 @@ data class AdRecord(
     val isActive: Boolean? = null,
     @SerialName("created_at")
     val createdAt: String? = null
-)
+) {
+    val price: String?
+        get() = pricePkr?.takeIf { it.isNotBlank() } ?: priceRaw
+}
 
 @Serializable
 data class AdImageRecord(

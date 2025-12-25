@@ -50,7 +50,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    onOpenChat: (String) -> Unit
+    onOpenChat: (String) -> Unit,
+    onManageListing: (String) -> Unit
 ) {
     val supabase = SupabaseClientProvider.client
     val profileRepository = remember { ProfileRepository(supabase) }
@@ -94,7 +95,11 @@ fun ProfileScreen(
                 }
             },
             onBack = { selectedAdId = null },
-            onOpenChat = onOpenChat
+            onOpenChat = onOpenChat,
+            onManageListing = { adId ->
+                selectedAdId = null
+                onManageListing(adId)
+            }
         )
         return
     }

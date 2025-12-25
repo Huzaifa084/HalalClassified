@@ -87,7 +87,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    onOpenChat: (String) -> Unit
+    onOpenChat: (String) -> Unit,
+    onManageListing: (String) -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
@@ -179,7 +180,11 @@ fun HomeScreen(
                     }
                 },
                 onBack = { selectedAdId = null },
-                onOpenChat = onOpenChat
+                onOpenChat = onOpenChat,
+                onManageListing = { adId ->
+                    selectedAdId = null
+                    onManageListing(adId)
+                }
             )
         } else {
             LazyColumn(

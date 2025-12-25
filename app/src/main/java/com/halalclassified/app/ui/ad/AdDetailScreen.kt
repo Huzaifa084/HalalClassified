@@ -22,11 +22,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Button
@@ -75,7 +78,8 @@ fun AdDetailScreen(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onBack: () -> Unit,
-    onOpenChat: (String) -> Unit
+    onOpenChat: (String) -> Unit,
+    onManageListing: (String) -> Unit
 ) {
     val context = LocalContext.current
     val supabase = SupabaseClientProvider.client
@@ -136,77 +140,84 @@ fun AdDetailScreen(
                 }
             }
 
-            if (isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-
-            if (errorMessage != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = errorMessage ?: "",
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-                return@Surface
-            }
-
-            val detail = detailState ?: return@Surface
-            val ad = detail.ad
-            val isOwner = !userId.isNullOrBlank() && ad.userId == userId
-            val canChat = !userId.isNullOrBlank() && !isOwner && !ad.userId.isNullOrBlank()
-
-            if (detail.imageUrls.isNotEmpty()) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(detail.imageUrls, key = { it }) { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = ad.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(240.dp)
-                        )
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Image,
-                        contentDescription = "Listing image",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 20.dp)
             ) {
+                if (isLoading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+
+                if (errorMessage != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = errorMessage ?: "",
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                    return@Surface
+                }
+
+                val detail = detailState ?: return@Surface
+                val ad = detail.ad
+                val isOwner = !userId.isNullOrBlank() && ad.userId == userId
+                val canChat = !userId.isNullOrBlank() && !isOwner && !ad.userId.isNullOrBlank()
+
+                if (detail.imageUrls.isNotEmpty()) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(detail.imageUrls, key = { it }) { url ->
+                            AsyncImage(
+                                model = url,
+                                contentDescription = ad.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(240.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Image,
+                            contentDescription = "Listing image",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                 Text(
                     text = formatPrice(ad.price),
                     style = MaterialTheme.typography.displaySmall,
@@ -220,7 +231,7 @@ fun AdDetailScreen(
                     style = MaterialTheme.typography.titleLarge
                 )
                 Text(
-                    text = "${ad.category ?: "Animal"} • ${ad.city ?: "Pakistan"} • ${formatRelativeTime(ad.createdAt)}",
+                    text = "${ad.category ?: "Animal"} - ${ad.city ?: "Pakistan"} - ${formatRelativeTime(ad.createdAt)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -294,56 +305,74 @@ fun AdDetailScreen(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (isOwner) {
                     Button(
-                        onClick = {
-                            val sellerId = ad.userId ?: return@Button
-                            scope.launch {
-                                val chat = chatRepository.getOrCreateChat(
-                                    adId = ad.id,
-                                    buyerId = userId ?: return@launch,
-                                    sellerId = sellerId
-                                )
-                                onOpenChat(chat.id)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = canChat,
+                        onClick = { onManageListing(ad.id) },
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.ChatBubbleOutline,
-                            contentDescription = "Chat"
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Manage listing"
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isOwner) "Your listing" else "Chat")
+                        Text("Manage listing")
                     }
-                    Button(
-                        onClick = {
-                            val phone = ad.phone?.takeIf { it.isNotBlank() } ?: sellerProfile?.phone
-                            if (!phone.isNullOrBlank()) {
-                                copyAndDial(context, phone)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isOwner && (!ad.phone.isNullOrBlank() || !sellerProfile?.phone.isNullOrBlank()),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Call,
-                            contentDescription = "Call"
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Call")
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = {
+                                val sellerId = ad.userId ?: return@Button
+                                scope.launch {
+                                    val chat = chatRepository.getOrCreateChat(
+                                        adId = ad.id,
+                                        buyerId = userId ?: return@launch,
+                                        sellerId = sellerId
+                                    )
+                                    onOpenChat(chat.id)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = canChat,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.ChatBubbleOutline,
+                                contentDescription = "Chat"
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Chat")
+                        }
+                        Button(
+                            onClick = {
+                                val phone = ad.phone?.takeIf { it.isNotBlank() } ?: sellerProfile?.phone
+                                if (!phone.isNullOrBlank()) {
+                                    copyAndDial(context, phone)
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !ad.phone.isNullOrBlank() || !sellerProfile?.phone.isNullOrBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Call,
+                                contentDescription = "Call"
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Call")
+                        }
                     }
                 }
             }
         }
     }
+}
 }
 
 @Composable
