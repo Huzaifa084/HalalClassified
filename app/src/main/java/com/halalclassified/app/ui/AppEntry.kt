@@ -1,5 +1,8 @@
 package com.halalclassified.app.ui
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,12 +20,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.halalclassified.app.R
 import com.halalclassified.app.data.auth.AuthController
 import com.halalclassified.app.data.profile.Profile
 import com.halalclassified.app.data.profile.ProfileRepository
 import com.halalclassified.app.data.profile.ProfileUpsert
-import com.halalclassified.app.data.session.StoredAccount
 import com.halalclassified.app.data.session.SessionStore
 import com.halalclassified.app.data.supabase.SupabaseClientProvider
 import com.halalclassified.app.ui.auth.AuthFlowScreen
@@ -32,7 +40,6 @@ import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.user.UserInfo
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -52,6 +59,41 @@ fun AppEntry() {
     var profileUpdateLoading by remember { mutableStateOf(false) }
     var profileLoaded by remember { mutableStateOf(false) }
     var profileError by remember { mutableStateOf<String?>(null) }
+    val webClientId = stringResource(R.string.google_web_client_id)
+    val googleSignInClient = remember(context, webClientId) {
+        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestIdToken(webClientId)
+            .build()
+        GoogleSignIn.getClient(context, options)
+    }
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) {
+            authController.endGoogleSignInWithError("Google sign-in canceled.")
+            return@rememberLauncherForActivityResult
+        }
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        runCatching {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken.isNullOrBlank()) {
+                authController.endGoogleSignInWithError("Google sign-in failed. Try again.")
+            } else {
+                scope.launch {
+                    authController.signInWithGoogleIdToken(idToken)
+                }
+            }
+        }.onFailure { error ->
+            val message = if (error is ApiException) {
+                "Google sign-in failed (code ${error.statusCode})."
+            } else {
+                error.message ?: "Google sign-in failed."
+            }
+            authController.endGoogleSignInWithError(message)
+        }
+    }
 
     LaunchedEffect(Unit) {
         supabase.auth.awaitInitialization()
@@ -143,8 +185,15 @@ fun AppEntry() {
                 }
             },
             onGoogleSignIn = {
-                scope.launch {
-                    authController.signInWithGoogle()
+                authController.clearStatus()
+                if (webClientId.isBlank() || webClientId.startsWith("YOUR_")) {
+                    authController.endGoogleSignInWithError("Set google_web_client_id in strings.xml.")
+                } else {
+                    authController.startGoogleSignIn()
+                    // Sign out locally to always show the account picker.
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                    }
                 }
             },
             onEmailSignUp = { firstName, lastName, email, password, dob ->

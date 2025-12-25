@@ -17,7 +17,7 @@ object SupabaseClientProvider {
         install(Auth) {
             scheme = BuildConfig.SUPABASE_REDIRECT_SCHEME
             host = BuildConfig.SUPABASE_REDIRECT_HOST
-            flowType = FlowType.IMPLICIT
+            flowType = FlowType.PKCE
             defaultExternalAuthAction = ExternalAuthAction.CustomTabs()
         }
         install(Postgrest)

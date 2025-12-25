@@ -3,6 +3,7 @@ package com.halalclassified.app.data.auth
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.gotrue.providers.Google
+import io.github.jan.supabase.gotrue.providers.builtin.IDToken
 import io.github.jan.supabase.gotrue.providers.builtin.Email
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,18 +85,29 @@ class AuthController(
         }
     }
 
-    suspend fun signInWithGoogle() {
+    fun startGoogleSignIn() {
+        updateLoading(true)
+    }
+
+    fun endGoogleSignInWithError(message: String) {
+        _state.update {
+            it.copy(
+                isLoading = false,
+                error = message,
+                message = null
+            )
+        }
+    }
+
+    suspend fun signInWithGoogleIdToken(idToken: String) {
         updateLoading(true)
         runCatching {
-            supabase.auth.signInWith(Google)
-        }.onSuccess {
-            _state.update {
-                it.copy(
-                    isLoading = false,
-                    message = "Continue in your browser to finish Google sign-in.",
-                    error = null
-                )
+            supabase.auth.signInWith(IDToken) {
+                this.idToken = idToken
+                provider = Google
             }
+        }.onSuccess {
+            _state.update { it.copy(isLoading = false, error = null, message = null) }
         }.onFailure { error ->
             _state.update {
                 it.copy(
