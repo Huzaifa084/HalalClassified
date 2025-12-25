@@ -1,6 +1,7 @@
 package com.halalclassified.app.ui.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -29,8 +30,11 @@ import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +44,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +63,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.halalclassified.app.data.auth.AuthUiState
 import com.halalclassified.app.data.session.StoredAccount
+import java.util.Calendar
+import java.util.Locale
 
 private enum class AuthStep {
     AccountSwitcher,
@@ -180,7 +187,8 @@ private fun EmailSignUpScreen(
     var lastName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var dob by rememberSaveable { mutableStateOf("") }
+    var dobDisplay by rememberSaveable { mutableStateOf("") }
+    var dobIso by rememberSaveable { mutableStateOf("") }
 
     AuthScreenFrame(
         title = "Create your account",
@@ -223,17 +231,20 @@ private fun EmailSignUpScreen(
             isPassword = true,
             enabled = !authState.isLoading
         )
-        AuthField(
+        DatePickerField(
             label = "Date of birth",
-            value = dob,
-            onValueChange = { dob = it },
+            value = dobDisplay,
             placeholder = "DD/MM/YYYY",
             leadingIcon = Icons.Outlined.Today,
-            enabled = !authState.isLoading
+            enabled = !authState.isLoading,
+            onDateSelected = { millis ->
+                dobDisplay = formatDateDisplay(millis)
+                dobIso = formatDateIso(millis)
+            }
         )
         PrimaryButton(
             text = "Create account",
-            onClick = { onSubmit(firstName, lastName, email, password, dob) },
+            onClick = { onSubmit(firstName, lastName, email, password, dobIso) },
             enabled = !authState.isLoading,
             loading = authState.isLoading
         )
@@ -536,6 +547,75 @@ private fun AuthField(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerField(
+    label: String,
+    value: String,
+    placeholder: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    enabled: Boolean = true,
+    onDateSelected: (Long) -> Unit
+) {
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+
+    if (showDialog) {
+        DatePickerDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            onDateSelected(millis)
+                        }
+                        showDialog = false
+                    },
+                    enabled = datePickerState.selectedDateMillis != null
+                ) {
+                    Text(text = "OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text(text = "Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { showDialog = true }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(text = label) },
+            placeholder = { Text(text = placeholder) },
+            leadingIcon = leadingIcon?.let {
+                {
+                    Icon(imageVector = it, contentDescription = null)
+                }
+            },
+            singleLine = true,
+            readOnly = true,
+            enabled = enabled,
+            shape = MaterialTheme.shapes.large,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
+        )
+    }
+}
+
 @Composable
 private fun ReadOnlyField(
     label: String,
@@ -656,4 +736,20 @@ private fun AuthBackground(content: @Composable BoxScope.() -> Unit) {
         )
         content()
     }
+}
+
+private fun formatDateDisplay(millis: Long): String {
+    val calendar = Calendar.getInstance().apply { timeInMillis = millis }
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val month = calendar.get(Calendar.MONTH) + 1
+    val year = calendar.get(Calendar.YEAR)
+    return String.format(Locale.US, "%02d/%02d/%04d", day, month, year)
+}
+
+private fun formatDateIso(millis: Long): String {
+    val calendar = Calendar.getInstance().apply { timeInMillis = millis }
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val month = calendar.get(Calendar.MONTH) + 1
+    val year = calendar.get(Calendar.YEAR)
+    return String.format(Locale.US, "%04d-%02d-%02d", year, month, day)
 }
