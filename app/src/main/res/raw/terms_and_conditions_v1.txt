@@ -1,0 +1,60 @@
+Halal Classified — Terms & Conditions (v1)
+Effective date: 2026-01-06
+
+Please read these Terms & Conditions carefully before using the Halal Classified mobile application (the “App”). By tapping “I Agree”, you confirm that you have read and accepted these Terms.
+
+1) About the App
+- Halal Classified is a marketplace application intended for browsing and posting livestock listings.
+- The App is provided on an “as is” and “as available” basis.
+
+2) Eligibility
+- You must be at least 13 years old to use the App.
+- If you are under the age required by your local laws to consent to data processing, you may only use the App with a parent/guardian’s permission.
+
+3) User Content & Listings
+- You are responsible for any content you post, including photos, descriptions, and contact details.
+- You agree to post accurate and non-misleading information.
+- You must not post illegal, harmful, abusive, hateful, or fraudulent content.
+
+4) Prohibited Conduct
+You agree NOT to:
+- Use the App for scams, impersonation, or off-platform fraud.
+- Upload content you do not own or have permission to use.
+- Attempt to hack, reverse engineer, disrupt, or misuse the App.
+- Interfere with other users’ experience or violate applicable laws.
+
+5) Payments & Transactions
+- The App may display listings and enable communication; it does not guarantee the quality, legality, or safety of any listing.
+- Any transaction is between the buyer and seller. Use caution and verify details.
+
+6) Moderation & Enforcement
+- We may remove content, restrict features, or suspend accounts if we believe you violated these Terms.
+- We may update or change features to keep the platform safe and reliable.
+
+7) Privacy
+- We process data to provide core functionality (authentication, listings, chat, and media uploads).
+- For details about data handling, please review the Privacy Policy section below.
+
+8) Disclaimer
+- We do not guarantee uninterrupted access, error-free operation, or that listings are accurate.
+- To the maximum extent permitted by law, we disclaim liability for losses arising from interactions or transactions between users.
+
+9) Changes to Terms
+- We may update these Terms from time to time. If changes are material, we may request acceptance again.
+
+10) Contact
+If you have questions about these Terms, contact: support@halalclassified.app
+
+---
+Privacy Policy (Summary)
+
+We collect and use information to operate the App:
+- Account data (email, profile information)
+- Listings data (text, images)
+- Chat metadata and messages (for communication features)
+- Device signals for basic security and debugging (where enabled)
+
+We do not sell your personal data.
+You can request deletion of your account by contacting support.
+
+(Replace this summary with your final legal Privacy Policy before release.)

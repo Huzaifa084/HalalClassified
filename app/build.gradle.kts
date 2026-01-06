@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.androidx.browser)
     implementation(libs.androidx.startup.runtime)
     implementation(libs.google.play.services.auth)
+    implementation(libs.google.play.services.ads)
     implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

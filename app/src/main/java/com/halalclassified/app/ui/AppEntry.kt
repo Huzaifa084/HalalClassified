@@ -57,6 +57,7 @@ fun AppEntry() {
     val onboardingStore = remember(context) { OnboardingStore(context) }
     val profileRepository = remember { ProfileRepository(supabase) }
     var storedAccounts by remember { mutableStateOf(sessionStore.loadAccounts()) }
+    val requiredTermsVersion = 1
     var onboardingComplete by remember { mutableStateOf(onboardingStore.isCompleted()) }
     var profileState by remember { mutableStateOf<Profile?>(null) }
     var profileFetchLoading by remember { mutableStateOf(false) }
@@ -136,7 +137,9 @@ fun AppEntry() {
         profileLoaded = true
     }
 
-    if (!onboardingComplete) {
+    val termsAccepted = onboardingStore.acceptedTermsVersion() >= requiredTermsVersion
+
+    if (!onboardingComplete || !termsAccepted) {
         TocPermissionsScreen(
             onContinue = {
                 onboardingStore.setCompleted(true)

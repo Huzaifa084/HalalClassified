@@ -11,8 +11,15 @@ class OnboardingStore(context: Context) {
         prefs.edit().putBoolean(KEY_COMPLETED, completed).apply()
     }
 
+    fun acceptedTermsVersion(): Int = prefs.getInt(KEY_TERMS_VERSION, 0)
+
+    fun setAcceptedTermsVersion(version: Int) {
+        prefs.edit().putInt(KEY_TERMS_VERSION, version).apply()
+    }
+
     private companion object {
         const val PREFS_NAME = "halal_classified_onboarding"
         const val KEY_COMPLETED = "onboarding_completed"
+        const val KEY_TERMS_VERSION = "terms_version_accepted"
     }
 }

@@ -64,12 +64,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.halalclassified.app.R
 import com.halalclassified.app.data.ads.AdWithImage
 import com.halalclassified.app.data.ads.AdsQuery
 import com.halalclassified.app.data.ads.AdsRepository
 import com.halalclassified.app.data.favorites.FavoritesRepository
 import com.halalclassified.app.data.supabase.SupabaseClientProvider
 import com.halalclassified.app.ui.ad.AdDetailScreen
+import com.halalclassified.app.ui.ads.AdMobBanner
 import com.halalclassified.app.ui.common.AllPakistan
 import com.halalclassified.app.ui.common.AnimalCategoryOptions
 import com.halalclassified.app.ui.common.CityPickerDialog
@@ -83,6 +85,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun HomeScreen(
@@ -226,6 +229,13 @@ fun HomeScreen(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface
                         )
+                    )
+                }
+
+                item {
+                    AdMobBanner(
+                        adUnitId = stringResource(R.string.admob_banner_ad_unit_id),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 

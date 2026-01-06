@@ -4,9 +4,11 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.annotation.RawRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -30,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,13 +46,21 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.halalclassified.app.R
+import com.halalclassified.app.data.session.OnboardingStore
 
 @Composable
 fun TocPermissionsScreen(onContinue: () -> Unit) {
     val context = LocalContext.current
+    val onboardingStore = remember(context) { OnboardingStore(context) }
+
+    val currentTermsVersion = 1
+
+    var onboardingStep by rememberSaveable { mutableStateOf(OnboardingStep.Terms) }
     var termsAccepted by rememberSaveable { mutableStateOf(false) }
     var permissionRefresh by remember { mutableStateOf(0) }
     var pendingContinue by remember { mutableStateOf(false) }
@@ -81,105 +94,220 @@ fun TocPermissionsScreen(onContinue: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Welcome to Halal Classified",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Before you continue, please review the terms and allow key permissions.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            ElevatedCard(
-                shape = MaterialTheme.shapes.large,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "Terms & Conditions",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    TermsBullet("Only halal animal listings are allowed.")
-                    TermsBullet("Provide accurate details and images.")
-                    TermsBullet("Respectful chat behavior is required.")
-                    TermsBullet("No payments or off-platform scams.")
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Checkbox(
-                    checked = termsAccepted,
-                    onCheckedChange = { termsAccepted = it }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "I agree to the Terms & Conditions and Privacy Policy.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            ElevatedCard(
-                shape = MaterialTheme.shapes.large,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Permissions",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    permissions.forEach { entry ->
-                        val granted = grantedMap[entry.permission] == true
-                        PermissionRow(
-                            title = entry.title,
-                            description = entry.description,
-                            granted = granted,
-                            onRequest = {
-                                permissionLauncher.launch(arrayOf(entry.permission))
-                            }
-                        )
+            when (onboardingStep) {
+                OnboardingStep.Terms -> TermsStep(
+                    appName = stringResource(R.string.app_name),
+                    termsResId = R.raw.terms_and_conditions_v1,
+                    termsAccepted = termsAccepted,
+                    onTermsAcceptedChange = { termsAccepted = it },
+                    onContinue = {
+                        onboardingStore.setAcceptedTermsVersion(currentTermsVersion)
+                        onboardingStep = OnboardingStep.Permissions
                     }
-                }
-            }
-
-            Button(
-                onClick = {
-                    if (termsAccepted) {
-                        requestMissingPermissions()
-                    }
-                },
-                enabled = termsAccepted,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
-            ) {
-                Text(text = "Continue to login")
+                OnboardingStep.Permissions -> PermissionsStep(
+                    appName = stringResource(R.string.app_name),
+                    permissions = permissions,
+                    grantedMap = grantedMap,
+                    onRequestPermission = { permissionLauncher.launch(arrayOf(it)) },
+                    onContinue = { requestMissingPermissions() }
+                )
             }
-
-            Text(
-                text = "You can change permissions later in Settings.",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
+}
+
+private enum class OnboardingStep {
+    Terms,
+    Permissions
+}
+
+@Composable
+private fun ColumnScope.TermsStep(
+    appName: String,
+    @RawRes termsResId: Int,
+    termsAccepted: Boolean,
+    onTermsAcceptedChange: (Boolean) -> Unit,
+    onContinue: () -> Unit
+) {
+    Text(
+        text = "Welcome to $appName",
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold
+    )
+    Text(
+        text = "Review and accept the Terms & Conditions to continue.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    val context = LocalContext.current
+    val termsText = remember(termsResId) { loadRawText(context, termsResId) }
+    val scrollState = rememberScrollState()
+    val hasReachedEnd by remember {
+        derivedStateOf { scrollState.maxValue > 0 && scrollState.value >= scrollState.maxValue }
+    }
+
+    ElevatedCard(
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Terms & Conditions",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = "Scroll to the bottom to enable acceptance.",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (hasReachedEnd) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            val progress = if (scrollState.maxValue == 0) 0f else scrollState.value.toFloat() / scrollState.maxValue.toFloat()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = if (hasReachedEnd) "Reached the end" else "Reading…",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 180.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(12.dp)
+                    .verticalScroll(scrollState)
+            ) {
+                Text(
+                    text = termsText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Checkbox(
+            checked = termsAccepted,
+            enabled = hasReachedEnd,
+            onCheckedChange = { onTermsAcceptedChange(it) }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "I agree to the Terms & Conditions.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (hasReachedEnd) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    Button(
+        onClick = onContinue,
+        enabled = termsAccepted,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    ) {
+        Text(text = "Agree & continue")
+    }
+}
+
+@Composable
+private fun ColumnScope.PermissionsStep(
+    appName: String,
+    permissions: List<PermissionEntry>,
+    grantedMap: Map<String, Boolean>,
+    onRequestPermission: (String) -> Unit,
+    onContinue: () -> Unit
+) {
+    Text(
+        text = "Almost done",
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold
+    )
+    Text(
+        text = "Allow key permissions to unlock the best experience in $appName.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    ElevatedCard(
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Permissions",
+                style = MaterialTheme.typography.titleMedium
+            )
+            permissions.forEach { entry ->
+                val granted = grantedMap[entry.permission] == true
+                PermissionRow(
+                    title = entry.title,
+                    description = entry.description,
+                    granted = granted,
+                    onRequest = { onRequestPermission(entry.permission) }
+                )
+            }
+        }
+    }
+
+    Button(
+        onClick = onContinue,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    ) {
+        Text(text = "Continue")
+    }
+
+    Text(
+        text = "You can change permissions later in Settings.",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+private fun loadRawText(context: Context, @RawRes resId: Int): String {
+    return runCatching {
+        context.resources.openRawResource(resId).bufferedReader().use { it.readText() }
+    }.getOrElse { "Unable to load terms. Please try again." }
 }
 
 private data class PermissionEntry(

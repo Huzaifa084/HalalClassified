@@ -24,6 +24,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.HalalClassified">
+
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id" />
+
+        <meta-data
+            android:name="com.halalclassified.app.ads.AdMobInitializer"
+            android:value="androidx.startup" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

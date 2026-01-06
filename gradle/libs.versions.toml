@@ -14,6 +14,7 @@ kotlinxSerialization = "1.7.3"
 browser = "1.8.0"
 startupRuntime = "1.2.0"
 playServicesAuth = "21.3.0"
+playServicesAds = "23.6.0"
 coil = "2.6.0"
 
 [libraries]
@@ -40,6 +41,7 @@ ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.r
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "startupRuntime" }
 google-play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+google-play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 supabase-bom = { group = "io.github.jan-tennert.supabase", name = "bom", version.ref = "supabase" }
 supabase-gotrue = { group = "io.github.jan-tennert.supabase", name = "gotrue-kt" }
 supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgrest-kt" }
