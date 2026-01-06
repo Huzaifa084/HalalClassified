@@ -2,7 +2,6 @@
     <string name="app_name">Halal Classified</string>
     <string name="google_web_client_id">835850660750-c6f2oa0q16frs5ph7fbe47m1t4dvs65e.apps.googleusercontent.com</string>
 
-    <string name="admob_app_id">ca-app-pub-1251866436595266~6554245491</string>
-    <!-- Replace with your real Banner Ad Unit ID before production release. -->
-    <string name="admob_banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+    <string name="admob_app_id">ca-app-pub-5350660959695674~6474532050</string>
+    <string name="admob_banner_ad_unit_id">ca-app-pub-5350660959695674/7137711187</string>
 </resources>

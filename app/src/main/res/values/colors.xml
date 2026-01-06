@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Brand palette (kept in sync with ui/theme/Color.kt) -->
+    <color name="hc_evergreen">#FF1E5B45</color>
+    <color name="hc_gold">#FFD4A84F</color>
 </resources>

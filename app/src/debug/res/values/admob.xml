@@ -1,0 +1,10 @@
+<resources>
+    <!-- Debug-only AdMob configuration.
+         Use Google's official test App ID + test banner so ads can render even if
+         your AdMob account/app is not approved yet.
+
+         Release builds still use values from src/main/res/values/strings.xml.
+     -->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+</resources>
