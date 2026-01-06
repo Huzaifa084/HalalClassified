@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Placeholder logo.
+         IMPORTANT: Replace this file with YOUR provided badge image:
+         Put the image at: res/drawable-nodpi/brand_badge.png (or .webp)
+         and delete this XML file so there is only ONE brand_badge resource.
+    -->
+
+    <path
+        android:fillColor="@color/hc_evergreen"
+        android:pathData="M54,8a46,46 0 1,1 0,92a46,46 0 1,1 0,-92z" />
+
+    <path
+        android:fillColor="@color/hc_gold"
+        android:pathData="M54,14a40,40 0 1,1 0,80a40,40 0 1,1 0,-80z" />
+
+    <path
+        android:fillColor="@color/hc_evergreen"
+        android:pathData="M54,24a30,30 0 1,1 0,60a30,30 0 1,1 0,-60z" />
+
+    <!-- Crescent + star hint inside placeholder -->
+    <path
+        android:fillColor="@color/hc_gold"
+        android:pathData="M48,36a18,18 0 1,1 0,36a18,18 0 1,1 0,-36z" />
+    <path
+        android:fillColor="@color/hc_evergreen"
+        android:pathData="M56,36a18,18 0 1,1 0,36a18,18 0 1,1 0,-36z" />
+    <path
+        android:fillColor="@color/hc_gold"
+        android:pathData="M69,41a3,3 0 1,1 0,6a3,3 0 1,1 0,-6z" />
+</vector>
